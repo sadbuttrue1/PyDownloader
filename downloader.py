@@ -1,9 +1,11 @@
 from datetime import datetime
 import logging
 import os
+import threading
 import urllib.request
 from bs4 import BeautifulSoup
 import sys
+import re
 
 __author__ = 'true'
 
@@ -20,12 +22,12 @@ def download(args):
         retries = 10
     if args.subdirs:
         for subdir in args.subdirs:
-            inside(base_url, subdir, directory, retries)
+            inside(base_url, subdir, directory, retries, args.multithread)
     else:
-        inside(base_url, '', directory, retries)
+        inside(base_url, '', directory, retries, args.multithread)
 
 
-def inside(base_url, subdir, directory, retries):
+def inside(base_url, subdir, directory, retries, multithread):
     retried = 0
     page_opened = False
     while retried < retries and not page_opened:
@@ -43,9 +45,10 @@ def inside(base_url, subdir, directory, retries):
                         sys.exc_info())
         return
     soup = BeautifulSoup(page.read(), "html.parser")
+    parent_link_re = re.compile('/')
     for a in soup.find_all('a'):
         link = a.get('href')
-        if '?' not in link:
+        if '?' not in link and not parent_link_re.match(link):
             if '.' in link:
                 full_path = directory + base_url + subdir
                 if not os.path.exists(full_path):
@@ -65,6 +68,10 @@ def inside(base_url, subdir, directory, retries):
                     logging.warning('at %s\nfailed to save %s, skipping\n error: %s', datetime.now(), base_url + subdir,
                                     sys.exc_info())
             else:
-                inside(base_url, subdir + link, directory, retries)
+                if multithread:
+                    threading.Thread(target=inside,
+                                     args=(base_url, subdir + link, directory, retries, multithread)).start()
+                else:
+                    inside(base_url, subdir + link, directory, retries, multithread)
     soup.decompose()
     page.close()
