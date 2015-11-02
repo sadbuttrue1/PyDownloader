@@ -17,7 +17,7 @@ def download(args):
     else:
         directory = ''
     if args.retries:
-        retries = int(args.retries)
+        retries = args.retries
     else:
         retries = 10
     if args.subdirs:
