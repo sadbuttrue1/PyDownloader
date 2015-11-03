@@ -33,8 +33,24 @@ def inside(base_url, subdir, directory, retries, multithread):
     while retried < retries and not page_opened:
         try:
             page = urllib.request.urlopen(base_url + subdir)
-            # TODO detect files and save it
-            # print(page.info())
+            if 'Last-Modified' in page.info().keys():
+                full_path = directory + base_url
+                if not os.path.exists(full_path):
+                    os.makedirs(full_path)
+                file_saved = False
+                retried = 0
+                while retried < retries and not file_saved:
+                    try:
+                        file = urllib.request.URLopener()
+                        file.retrieve(base_url + subdir, full_path + subdir)
+                        file_saved = True
+                    except:
+                        retried += 1
+                        file_saved = False
+                        continue
+                if not file_saved:
+                    logging.warning('at %s\nfailed to save %s, skipping\n error: %s', datetime.now(), base_url + subdir,
+                                    sys.exc_info())
             page_opened = True
         except:
             retried += 1
